@@ -19,7 +19,7 @@ namespace Boomer
         public static async Task<DbMessage> CreateAsync(SocketUserMessage msg, CollectionReference playerCollection, bool isSuccessfulCommand)
         {
             return await CreateAsync(msg.Content, msg.Timestamp, isSuccessfulCommand, msg.Author.Id, playerCollection,
-                playerCollection.Document($"{msg.Author.Id}/recent-messages").Id);
+                playerCollection.Document().Id);
         }
 
         public static async Task<DbMessage> CreateAsync(string content, DateTimeOffset createTime, bool isSuccessfulCommand, ulong authorId, CollectionReference playerCollection, string docId)
