@@ -33,7 +33,7 @@ namespace Boomer
                 {
                     IChannel channel;
 
-                    try { channel = (IChannel)(await context.Guild.GetTextChannelsAsync()).Where(x => x.Id == id); }
+                    try { channel = (await context.Guild.GetTextChannelsAsync()).Where(x => x.Id == id).First(); }
                     catch (InvalidOperationException) { return await Task.FromResult(PreconditionResult.FromError($"Required channel ID {id} not found in {context.Guild.Name}.")); }
 
                     allowedChannelIds.Add(channel.Id);

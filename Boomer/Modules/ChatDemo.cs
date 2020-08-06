@@ -12,8 +12,8 @@ namespace Boomer.Modules
 
 #if !DEBUG
         [RequireChannel(new ulong[]{
-            594586575254323210, //#demo-battleground,
-            484792885334507531 //#hypos-bot-control
+            739399649038958604, // #🤖-bot-battleground,
+            740379586558296154 // #bot-testing
         })]
 #endif
     public class ChatDemo : ModuleBase<SocketCommandContext>
@@ -22,7 +22,7 @@ namespace Boomer.Modules
         private readonly CollectionReference _playerColl;
         private readonly CollectionReference _demoMsgs;
         private readonly CollectionReference _missMsgs;
-        private CollectionReference _leaderboards;
+        // private CollectionReference _leaderboards;
 
         public ChatDemo(FirestoreDb database)
         {
@@ -30,7 +30,7 @@ namespace Boomer.Modules
             _playerColl = database.Collection("players");
             _missMsgs = database.Collection("misc-data/response-msgs/miss-msgs");
             _demoMsgs = database.Collection("misc-data/response-msgs/demo-msgs");
-            _leaderboards = database.Collection("leaderboards");
+            // _leaderboards = database.Collection("leaderboards");
         }
 
         [Command("boost")]
@@ -84,11 +84,11 @@ namespace Boomer.Modules
             {
                 color = Bot.SuccessColor;
                 title = "**BOOM!**";
-                var demoMsgs = await _demoMsgs.ListDocumentsAsync().ToList();
+                var demoMsgs = await _demoMsgs.ListDocumentsAsync().ToListAsync();
 
-                if (target.Id == 226543536302981120)
+                if (target.Id == 529762846305681418)
                 {
-                    replyMsg = ":boom: You demoed Sledge... but no one will believe you. :boom:";
+                    replyMsg = ":boom: You demoed Woody... but no one will believe you. :boom:";
                 }
 
                 else
@@ -98,7 +98,7 @@ namespace Boomer.Modules
                     replyMsg = ":boom: " + replyMsg.Replace("%t", target.Username) + " :boom:";
                 }
 
-                if (Context.User.Id == 226543536302981120)
+                if (Context.User.Id == 529762846305681418)
                 {
                     imgUrl = "https://preview.redd.it/7s7kdercffe01.png?width=960&crop=smart&auto=webp&s=41c7e0940924a374fe0580d7fee87a90a7890763";
                 }
@@ -106,7 +106,7 @@ namespace Boomer.Modules
 
             else
             {
-                var missMsgs = await _missMsgs.ListDocumentsAsync().ToList();
+                var missMsgs = await _missMsgs.ListDocumentsAsync().ToListAsync();
 
                 replyMsg = (await missMsgs.ElementAt(new Random().Next(0, missMsgs.Count - 1)).GetSnapshotAsync()).GetValue<string>("content");
                 replyMsg = ":dash: " + replyMsg.Replace("%t", target.Username) + " :dash:";
@@ -114,7 +114,7 @@ namespace Boomer.Modules
                 color = Bot.ErrorColor;
                 title = "*Woosh...*";
 
-                if (target.Id == 226543536302981120)
+                if (target.Id == 529762846305681418)
                     imgUrl = "https://i.imgur.com/6u7arkT.png";
             }
 
@@ -136,8 +136,8 @@ namespace Boomer.Modules
                 ImageUrl = imgUrl
             }.Build());
 
-            await Bot.demoLeaderboard.UpdateAsync();
-            await Bot.KdrLeaderboard.UpdateAsync();
+            // await Bot.demoLeaderboard.UpdateAsync();
+            // await Bot.KdrLeaderboard.UpdateAsync();
         }
 
         [Command("stats")]
@@ -201,7 +201,7 @@ namespace Boomer.Modules
         }
 
 #if !DEBUG
-        [RequireRole(493510105833144332)] //Require Mod Team role or above
+        [RequireRole(739322852813307925)] // Require Moderator role or above
 #endif
         [Summary("Add a demo message to the database. Note: Use `%t` for target username.")]
         [Command("adddemomsg")]
@@ -213,7 +213,7 @@ namespace Boomer.Modules
         }
 
 #if !DEBUG
-        [RequireRole(493510105833144332)] //Require Mod Team role or above
+        [RequireRole(739322852813307925)] // Require Mod Team role or above
 #endif
         [Summary("Add a miss message to the database. Note: use `%t` for target username.")]
         [Command("addmissmsg")]
@@ -226,13 +226,9 @@ namespace Boomer.Modules
 
         public async Task AddResponseMessageAsync(CollectionReference messages, string msg)
         {
-            var x = await messages.ListDocumentsAsync().ToList();
+            var x = await messages.ListDocumentsAsync().ToListAsync();
 
-            await messages.Document((x.Count + 1).ToString()).SetAsync(
-                new Dictionary<string, object>()
-                {
-                    { "content", msg }
-                });
+            await messages.Document((x.Count + 1).ToString()).UpdateAsync("content", msg);
         }
     }
 }

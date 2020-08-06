@@ -28,7 +28,7 @@ namespace Boomer
         private async Task InitializeAsync(ulong id, CollectionReference playerCollection)
         {
             PlayerCollection = playerCollection;
-            PlayerDoc = PlayerCollection.Document($"players/{id}");
+            PlayerDoc = PlayerCollection.Document(id.ToString());
 
             var playerDocSnap = await PlayerDoc.GetSnapshotAsync();
 

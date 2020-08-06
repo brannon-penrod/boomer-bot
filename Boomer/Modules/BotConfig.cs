@@ -14,7 +14,7 @@ namespace Boomer.Modules
             _config = config;
         }
 #if !DEBUG
-        [RequireRole(493510105833144332)] //Require the Mod Team role or above
+        [RequireRole(739322852813307925)] // Require Moderator role or above
 #endif
         [Command("setprefix")]
         [Summary("Sets this bot's prefix.")]
@@ -26,7 +26,7 @@ namespace Boomer.Modules
             await Context.Client.SetGameAsync(newPrefix + "help");
         }
 #if !DEBUG
-        [RequireRole(493510105833144332)] //Require Mod Team role or above
+        [RequireRole(739322852813307925)] // Require Moderator role or above
 #endif
         [Command("setactivity")]
         [Summary("Set this bot's activity.\n" +

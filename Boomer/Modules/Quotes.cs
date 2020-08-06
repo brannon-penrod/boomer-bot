@@ -1,5 +1,7 @@
-﻿using Discord;
+﻿using Boomer.Utilities;
+using Discord;
 using Discord.Commands;
+using Google.Api.Gax;
 using Google.Cloud.Firestore;
 using System;
 using System.Collections.Generic;
@@ -22,42 +24,42 @@ namespace Boomer.Modules
         }
 #if !DEBUG
         [RequireChannel(new ulong[]{
-            //#salt,
-            //#hypos-bot-control
+            740388406407987282, // #🗻-salt-mountain
+            740379586558296154 // #bot-test
         })]
 #endif
         [Command("quote", ignoreExtraArgs: false)]
         [Summary("Displays a random salt *or* sugar quote.")]
         public async Task DisplayQuoteAsync()
         {
-            await DisplayQuoteAsync(new Random().Next(0, 2) == 0 ? _salt : _sugar, 0, Context);
+            await DisplayQuoteAsync(new Random().Next(0, 2) == 0 ? _salt : _sugar, 0);
         }
 #if !DEBUG
-        [RequireChannel(new ulong[]{
-            //#salt ID,
-            //#hypos-bot-control
+        [RequireChannel(new ulong[] {
+            740388406407987282, // #🗻-salt-mountain
+            740379586558296154  // #bot-testing
         })]
 #endif
         [Command("salt")]
         [Summary("Displays a random salt quote, or the quote with the specified id.")]
         public async Task DisplaySaltAsync(int id = 0)
         {
-            await DisplayQuoteAsync(_salt, id, Context);
+            await DisplayQuoteAsync(_salt, id);
         }
 #if !DEBUG
         [RequireChannel(new ulong[]{
-            //#salt ID,
-            //#hypos-bot-control
+            740388406407987282, // #🗻-salt-mountain
+            740379586558296154 // #bot-testing
         })]
 #endif
         [Command("sugar")]
         [Summary("Displays a random sugar quote, or the quote with the specified id.")]
         public async Task DisplaySugarAsync(int id = 0)
         {
-            await DisplayQuoteAsync(_sugar, id, Context);
+            await DisplayQuoteAsync(_sugar, id);
         }
 #if !DEBUG
-        [RequireRole(493510105833144332)] //Require Mod role or above
+        [RequireRole(739322852813307925)] // Require Moderator role or above
 #endif
         [Command("addquote")]
         [Summary("Adds a quote of the specified type (salt/sugar) from the specified context.")]
@@ -66,45 +68,33 @@ namespace Boomer.Modules
             if (!Enum.TryParse(context, true, out Quote.Context quoteContext))
                 quoteContext = Quote.Context.Other;
 
-            //determine which collection to use
+            // determine which collection to use
             type = type.ToLower();
-            var quotes = type == "salt" ? _salt :
+
+            CollectionReference quotes = 
+                         type == "salt" ? _salt :
                          type == "sugar" ? _sugar :
                          null;
 
-            if (quotes is null)
-            {
-                await ReplyAsync("Type must be one of salt or sugar.");
-                return;
-            }
+            int id = await FindLowestAvailableIdAsync(quotes);
 
-            QuerySnapshot snapshot = await quotes.GetSnapshotAsync();
-
-            //generate a random 5-digit ID not already contained in the collection
-            Random rand = new Random();
-            int id = 0;
-
-            do
-            {
-                id = rand.Next(1, 99999);
-            } while (snapshot.Any(x => x.Id == id.ToString()));
-
-            //add the quote and context
+            // add the quote/context/id
             Dictionary<string, object> newQuote = new Dictionary<string, object>()
             {
                 { "content", content },
-                { "context", quoteContext }
+                { "context", quoteContext },
+                { "id", id }
             };
 
-            await quotes.Document(id.ToString()).SetAsync(newQuote);
+            await quotes.Document().SetAsync(newQuote);
 
             Enum.TryParse(context, true, out Quote.Context embedContext);
 
             await ReplyAsync("Quote added!");
-            await DisplayQuoteAsync(quotes, id, Context);
+            await DisplayQuoteAsync(quotes, id);
         }
 #if !DEBUG
-        [RequireRole(493510105833144332)]
+        [RequireRole(739322852813307925)] // Require Moderator role or above
 #endif
         [Command("delquote")]
         [Summary("Deletes a quote with the specified id from the salt or sugar quotes.")]
@@ -128,14 +118,14 @@ namespace Boomer.Modules
             }
 
             await ReplyAsync("Deleting quote:");
-            await DisplayQuoteAsync(quotes, id, Context);
+            await DisplayQuoteAsync(quotes, id);
 
-            await quote.DeleteAsync();
+            await quote.Reference.DeleteAsync();
 
             await Context.Message.AddReactionAsync(SuccessEmote);
         }
 #if !DEBUG
-        [RequireRole(493510105833144332)]
+        [RequireRole(739322852813307925)] // Require Moderator role or above
 #endif
         [Command("quotelist")]
         [Summary("Sends a link to view all of the quotes in the database.")]
@@ -145,24 +135,28 @@ namespace Boomer.Modules
                 "https://console.firebase.google.com/u/1/project/boomer-bc7c3/database/firestore/data~2FsaltQuotes~2F10109");
         }
 
-        private async Task<DocumentReference> GetQuoteAsync(CollectionReference quotes, int id)
+        private async Task<DocumentSnapshot> GetQuoteAsync(CollectionReference quotes, int id)
         {
-            var quoteList = await quotes.ListDocumentsAsync().ToList()
-                ?? new List<DocumentReference>();
-            var matches = quoteList.Where(x => x.Id == id.ToString());
+            var matches = quotes.WhereEqualTo("id", id);
 
-            if (matches.Count() == 0) return null;
-            else return matches.First();
+            var docs = (await matches.GetSnapshotAsync()).Documents;
+
+            if(docs.Count > 1)
+            {
+                throw new Exception($"More than one match for id {id} found.");
+            }
+
+            return docs.First();
         }
 
-        private async Task DisplayQuoteAsync(CollectionReference quotes, int id, SocketCommandContext scc)
+        private async Task DisplayQuoteAsync(CollectionReference quotes, int id)
         {
             string type = quotes == _salt ? "salt" : quotes == _sugar ? "sugar" : throw new ArgumentException();
 
             if (id == 0)
             {
-                //generate a random id
-                var list = await quotes.ListDocumentsAsync().ToList()
+                // generate a random id
+                var list = await quotes.ListDocumentsAsync().ToListAsync()
                     ?? new List<DocumentReference>();
 
                 if (list.Count() == 0)
@@ -171,24 +165,30 @@ namespace Boomer.Modules
                     return;
                 }
 
-                if (!int.TryParse(list[new Random().Next(0, list.Count())].Id, out int randId))
-                    throw new Exception("Id parse failed. Please check the Firestore.");
+                var randQuote = list[new Random().Next(0, list.Count())];
+
+                var snap = await randQuote.GetSnapshotAsync();
+
+                if(!snap.TryGetValue("id", out int randId))
+                {
+                    int newId = await FindLowestAvailableIdAsync(quotes);
+                    await randQuote.UpdateAsync("id", newId);
+                    randId = newId;
+                }
 
                 id = randId;
             }
 
-            // get a dictionary representation of the quote with the id
-            _ = new Dictionary<string, object>();
+            var toDisplay = await GetQuoteAsync(quotes, id);
 
-            var x = await GetQuoteAsync(quotes, id);
             Dictionary<string, object> quote;
-            if (x is null)
+            if (toDisplay is null)
             {
                 await ReplyAsync(embed: ErrorEmbed("No quote found with id " + id));
                 return;
             }
 
-            else quote = (await x.GetSnapshotAsync()).ToDictionary();
+            else quote = toDisplay.ToDictionary();
 
             if (quote.Count == 0)
             {
@@ -214,13 +214,33 @@ namespace Boomer.Modules
             await ReplyAsync(embed: new EmbedBuilder()
             {
                 Color = type == "salt" ? SaltColor : SugarColor,
-                Description = $"*{quote["content"].ToString()}*",
+                Description = quote["content"].ToString(),
                 Footer = new EmbedFooterBuilder()
                 {
                     IconUrl = Quote.FooterIconUrl(context),
                     Text = $"From {contextStr} • ID: {id}"
                 }
             }.Build());
+        }
+
+        private async Task<int> FindLowestAvailableIdAsync(CollectionReference quotes)
+        {
+            int id = 1;
+
+            // generate the lowest-integer ID not already contained in the collection.
+
+            List<DocumentSnapshot> quoteList = (await quotes.OrderBy("id").GetSnapshotAsync()).ToList();
+
+            foreach (DocumentSnapshot q in quoteList)
+            {
+                if (q.TryGetValue("id", out int qId))
+                {
+                    if (qId <= id) id = qId + 1;
+                    else return id;
+                }
+            }
+
+            return id;
         }
     }
 }

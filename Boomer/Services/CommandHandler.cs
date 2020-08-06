@@ -34,7 +34,7 @@ namespace Boomer
 
             // event subscription
             _discord.MessageReceived += OnMessageRecievedAsync;
-            _discord.GuildAvailable += CreateDemoLeaderboardsAsync;
+            // _discord.GuildAvailable += CreateDemoLeaderboardsAsync;
 #if !DEBUG
             _discord.JoinedGuild += OnJoinedGuildAsync;
 #endif
@@ -77,7 +77,7 @@ namespace Boomer
                             errorEmoji = new Emoji("❌");
                             break;
                         case CommandError.UnmetPrecondition:
-                            errorEmoji = null;
+                            errorEmoji = new Emoji("🤬");
                             break;
                         default:
                             await context.Channel.SendMessageAsync(result.ErrorReason);
@@ -128,12 +128,12 @@ namespace Boomer
 
         private async Task OnJoinedGuildAsync(SocketGuild guild)
         {
-            if(guild.Id != 300815426462679051) await guild.LeaveAsync();
+            if(guild.Id != 738929882846855168) await guild.LeaveAsync();
         }
 
         private async Task<bool> GetEnoughTimePassedAsync(ulong userId, DateTimeOffset msgTimestamp)
         {
-            List<DocumentReference> recentMsgs = await _database.Collection($"players/{userId}/recent-messages").ListDocumentsAsync().ToList();
+            List<DocumentReference> recentMsgs = await _database.Collection($"players/{userId}/recent-messages").ListDocumentsAsync().ToListAsync();
             DocumentReference mostRecentMsg = recentMsgs.Count > 0 ? recentMsgs.ElementAt(0) : null;
 
             if (mostRecentMsg is null) return true;

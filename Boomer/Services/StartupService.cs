@@ -30,9 +30,9 @@ namespace Boomer
 #if !DEBUG
             var guilds = _discord.Guilds;
 
-            if (guilds.Any(g => g.Id != 300815426462679051))
+            if (guilds.Any(g => g.Id != 738929882846855168))
             {
-                foreach (var guild in guilds.Where(g => g.Id != 300815426462679051))
+                foreach (var guild in guilds.Where(g => g.Id != 738929882846855168))
                 {
                     await guild.LeaveAsync();
                 } 
@@ -49,7 +49,7 @@ namespace Boomer
 
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
 
-            await _discord.SetGameAsync($"{_config["prefix"]}help");
+            await _discord.SetGameAsync($"{_config["prefix"]}help", null, ActivityType.Listening);
         }
     }
 }
